@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Subscription extends Model
 {
-    use HasFactory;
+
+    use HasUuids;
 
     protected $table = "subscriptions";
 
-    protected $fillable = ['subscriptions', 'type', 'expires_at', 'status'];
+    protected $fillable = ['user_id', 'type', 'expires_at', 'status'];
 
 }
