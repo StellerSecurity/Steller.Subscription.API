@@ -4,7 +4,7 @@ namespace App\Http\Controllers\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
