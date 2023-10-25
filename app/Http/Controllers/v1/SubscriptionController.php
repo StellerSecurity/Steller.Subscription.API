@@ -28,7 +28,7 @@ class SubscriptionController extends Controller
         $subscription = Subscription::find($id);
 
         if($subscription === null) {
-            return response()->json([], 400);
+            return response()->json(null, 400);
         }
         return response()->json($subscription, 200);
     }
