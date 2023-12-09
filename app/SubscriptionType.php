@@ -12,4 +12,6 @@ enum SubscriptionType: int
     case CLOUD = 4;
     case PHOTOVAULT = 5;
 
+    case STELLAROS = 6;
+
 }
