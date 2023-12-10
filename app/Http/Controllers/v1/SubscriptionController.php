@@ -19,6 +19,13 @@ class SubscriptionController extends Controller
         return response()->json($subscription);
     }
 
+    // returns a list of subscriptions a reseller has sold
+    public function reseller(int $reseller_user_id, Request $request)
+    {
+        $subscriptions = Subscription::where('reseller_user_id', $reseller_user_id)->orderBy('created_at', 'desc')->get();
+        return response()->json($subscriptions);
+    }
+
     /**
      * @param string $id
      * @return \Illuminate\Http\JsonResponse
