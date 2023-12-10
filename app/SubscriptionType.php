@@ -14,4 +14,10 @@ enum SubscriptionType: int
 
     case STELLAROS = 6;
 
+
+    case SIMCARD = 7;
+
+    case NOTES = 8;
+
+
 }
