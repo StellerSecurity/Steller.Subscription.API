@@ -4,6 +4,8 @@ namespace App\Http\Controllers\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\SubscriptionStatus;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
@@ -74,6 +76,25 @@ class SubscriptionController extends Controller
         $subscription->save();
 
         return response()->json($subscription, 200);
+
+    }
+
+    public function scheduler()
+    {
+
+        // sets expired subs to inactive.
+        $data = Subscription::where(
+            [['expires_at', '<=', Carbon::now()],
+            ['status', '!=', SubscriptionStatus::INACTIVE->value]])->update(['status' => SubscriptionStatus::INACTIVE->value]
+        );
+
+        // sets un-expired subs to active.
+        $data = Subscription::where(
+            [['expires_at', '>=', Carbon::now()],
+                ['status', '!=', SubscriptionStatus::ACTIVE->value]])->update(['status' => SubscriptionStatus::ACTIVE->value]
+        );
+
+        return response()->json($data);
 
     }
 

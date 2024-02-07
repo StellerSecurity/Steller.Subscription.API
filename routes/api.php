@@ -14,9 +14,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
 
 Route::prefix('v1')->group(function () {
 
@@ -24,7 +21,7 @@ Route::prefix('v1')->group(function () {
 
         // wipe user controller
         Route::prefix('subscriptioncontroller')->group(function () {
-            Route::controller(\App\Http\Controllers\V1\SubscriptionController::class)->group(function () {
+            Route::controller(\App\Http\Controllers\v1\SubscriptionController::class)->group(function () {
                 Route::post('/add', 'add');
                 Route::get('/find/{id}', 'find');
                 Route::get('/reseller/{reseller_user_id}', 'reseller');
@@ -34,5 +31,10 @@ Route::prefix('v1')->group(function () {
 
     });
 
+    Route::prefix('subscriptioncontroller')->group(function () {
+        Route::controller(\App\Http\Controllers\v1\SubscriptionController::class)->group(function () {
+            Route::get('scheduler', 'scheduler');
+        });
+    });
 
 });
