@@ -22,7 +22,7 @@ Route::prefix('v1')->group(function () {
         // wipe user controller
         Route::prefix('subscriptioncontroller')->group(function () {
             Route::controller(\App\Http\Controllers\v1\SubscriptionController::class)->group(function () {
-                Route::get('/add', 'add');
+                Route::post('/add', 'add');
                 Route::get('/find/{id}', 'find');
                 Route::get('/reseller/{reseller_user_id}', 'reseller');
                 Route::patch('/patch', 'patch');
