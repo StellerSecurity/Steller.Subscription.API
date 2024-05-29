@@ -12,6 +12,6 @@ class Subscription extends Model
 
     protected $table = "subscriptions";
 
-    protected $fillable = ['user_id', 'type', 'expires_at', 'status', 'reseller_user_id'];
+    protected $fillable = ['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id'];
 
 }

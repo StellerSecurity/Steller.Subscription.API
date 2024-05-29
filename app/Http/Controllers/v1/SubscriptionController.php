@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\SubscriptionStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class SubscriptionController extends Controller
 {
@@ -17,7 +18,14 @@ class SubscriptionController extends Controller
      */
     public function add(Request $request): \Illuminate\Http\JsonResponse
     {
-        $subscription = Subscription::create($request->all());
+
+        $data = $request->all();
+
+        if($request->input('id') === null && strlen($request->input('id') > 16)) {
+            $data['id'] = Str::uuid();
+        }
+
+        $subscription = Subscription::create($data);
         return response()->json($subscription);
     }
 
