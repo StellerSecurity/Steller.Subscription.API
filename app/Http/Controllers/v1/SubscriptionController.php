@@ -39,10 +39,10 @@ class SubscriptionController extends Controller
     public function findusersubscriptions(Request $request)
     {
 
-        $where = ['user_id', $request->input('user_id')];
+        $where['user_id'] = $request->input('user_id');
 
         if($request->input('type') !== null) {
-            $where[] = ['type', $request->input('type')];
+            $where['type'] = $request->input('type');
         }
 
         $subscriptions = Subscription::where($where)->orderBy('created_at', 'desc')->get();
