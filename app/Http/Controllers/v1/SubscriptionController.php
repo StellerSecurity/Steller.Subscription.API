@@ -36,6 +36,19 @@ class SubscriptionController extends Controller
         return response()->json($subscriptions);
     }
 
+    public function findusersubscriptions(Request $request)
+    {
+
+        $where = ['user_id', $request->input('user_id')];
+
+        if($request->input('type') !== null) {
+            $where[] = ['type', $request->input('type')];
+        }
+
+        $subscriptions = Subscription::where($where)->orderBy('created_at', 'desc')->get();
+        return response()->json($subscriptions);
+    }
+
     /**
      * @param string $id
      * @return \Illuminate\Http\JsonResponse

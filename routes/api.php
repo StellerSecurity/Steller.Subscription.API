@@ -24,6 +24,7 @@ Route::prefix('v1')->group(function () {
             Route::controller(\App\Http\Controllers\v1\SubscriptionController::class)->group(function () {
                 Route::post('/add', 'add');
                 Route::get('/find/{id}', 'find');
+                Route::get('/user/subscriptions', 'findusersubscriptions');
                 Route::get('/reseller/{reseller_user_id}', 'reseller');
                 Route::patch('/patch', 'patch');
             });
