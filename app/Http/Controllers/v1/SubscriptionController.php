@@ -21,7 +21,7 @@ class SubscriptionController extends Controller
 
         $data = $request->all();
 
-        if($request->input('id') === null or $request->input('id') == 1977) {
+        if($request->input('id') === null or $request->input('id') == 1977 or $request->input('id') == 1988) {
             $data['id'] = Str::uuid();
         }
 
