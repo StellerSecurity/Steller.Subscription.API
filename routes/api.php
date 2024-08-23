@@ -30,6 +30,12 @@ Route::prefix('v1')->group(function () {
             });
         });
 
+        Route::prefix('plancontroller')->group(function () {
+            Route::controller(\App\Http\Controllers\v1\PlanController::class)->group(function () {
+                Route::get('/{plan_id}', 'plan');
+            });
+        });
+
     });
 
     Route::prefix('subscriptioncontroller')->group(function () {
