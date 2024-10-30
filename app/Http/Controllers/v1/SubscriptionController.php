@@ -25,6 +25,16 @@ class SubscriptionController extends Controller
             $data['id'] = Str::uuid();
         }
 
+        if($request->input('pretty_id') == 1) {
+            $characters = '0123456789';
+            $charactersLength = strlen($characters);
+            $randomString = '';
+            for ($i = 0; $i < 16; $i++) {
+                $randomString .= $characters[rand(0, $charactersLength - 1)];
+            }
+            $data['id'] = $randomString;
+        }
+
         $subscription = Subscription::create($data);
         return response()->json($subscription);
     }
