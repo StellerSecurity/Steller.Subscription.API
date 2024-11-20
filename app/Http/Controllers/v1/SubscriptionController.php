@@ -121,8 +121,7 @@ class SubscriptionController extends Controller
 
         // sets un-expired subs to active.
         $data = Subscription::where(
-            [['expires_at', '>=', Carbon::now()],
-                ['status', '!=', SubscriptionStatus::ACTIVE->value]])->update(['status' => SubscriptionStatus::ACTIVE->value]
+            ['expires_at', '>=', Carbon::now()])->whereNotIn('status', [SubscriptionStatus::ACTIVE->value, SubscriptionStatus::TRIAL->value])->update(['status' => SubscriptionStatus::ACTIVE->value]
         );
 
         return response()->json($data);
