@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1;
 
+use App\Helpers\IdHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\SubscriptionStatus;
@@ -26,13 +27,7 @@ class SubscriptionController extends Controller
         }
 
         if($request->input('pretty_id') == 1) {
-            $characters = '0123456789';
-            $charactersLength = strlen($characters);
-            $randomString = '';
-            for ($i = 0; $i < 16; $i++) {
-                $randomString .= $characters[rand(0, $charactersLength - 1)];
-            }
-            $data['id'] = $randomString;
+            $data['id'] = IdHelper::makePrettyId();
         }
 
         $subscription = Subscription::create($data);
