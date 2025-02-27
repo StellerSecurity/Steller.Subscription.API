@@ -116,7 +116,7 @@ class SubscriptionController extends Controller
             return response()->json([], 400);
         }
 
-        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at']))->save();
+        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at', 'user_id']))->save();
         $subscription->save();
 
         return response()->json($subscription, 200);
