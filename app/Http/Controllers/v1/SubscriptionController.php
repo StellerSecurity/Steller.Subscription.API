@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\v1;
 
+use App\Helpers\IdHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\SubscriptionStatus;
@@ -19,20 +20,14 @@ class SubscriptionController extends Controller
     public function add(Request $request): \Illuminate\Http\JsonResponse
     {
 
-        $data = $request->all();
+        $data = $request->only(['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id']);
 
         if($request->input('id') === null or $request->input('id') == 1977 or $request->input('id') == 1988) {
             $data['id'] = Str::uuid();
         }
 
         if($request->input('pretty_id') == 1) {
-            $characters = '0123456789';
-            $charactersLength = strlen($characters);
-            $randomString = '';
-            for ($i = 0; $i < 16; $i++) {
-                $randomString .= $characters[rand(0, $charactersLength - 1)];
-            }
-            $data['id'] = $randomString;
+            $data['id'] = IdHelper::makePrettyId();
         }
 
         $subscription = Subscription::create($data);
@@ -49,7 +44,13 @@ class SubscriptionController extends Controller
     public function findusersubscriptions(Request $request)
     {
 
-        $where['user_id'] = $request->input('user_id');
+        $user_id = $request->get('user_id');
+
+        if($user_id === null) {
+            return response()->json(null, 400);
+        }
+
+        $where['user_id'] = $user_id;
 
         if($request->input('type') !== null) {
             $where['type'] = $request->input('type');
@@ -80,7 +81,13 @@ class SubscriptionController extends Controller
     public function delete(Request $request): \Illuminate\Http\JsonResponse
     {
 
-        $subscription = Subscription::find($request->input('id'));
+        $id = $request->input('id');
+
+        if($id === null) {
+            return response()->json([], 400);
+        }
+
+        $subscription = Subscription::find($id);
         if($subscription === null) {
             return response()->json([], 400);
         }
@@ -97,13 +104,19 @@ class SubscriptionController extends Controller
     public function patch(Request $request): \Illuminate\Http\JsonResponse
     {
 
-        $subscription = Subscription::find($request->input('id'));
+        $id = $request->input('id');
+
+        if($id === null) {
+            return response()->json([], 400);
+        }
+
+        $subscription = Subscription::find($id);
 
         if($subscription === null) {
             return response()->json([], 400);
         }
 
-        $subscription->fill($request->all());
+        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at']))->save();
         $subscription->save();
 
         return response()->json($subscription, 200);
