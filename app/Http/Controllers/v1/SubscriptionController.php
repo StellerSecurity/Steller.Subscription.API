@@ -20,7 +20,7 @@ class SubscriptionController extends Controller
     public function add(Request $request): \Illuminate\Http\JsonResponse
     {
 
-        $data = $request->only(['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id']);
+        $data = $request->only(['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id', 'meta']);
 
         if($request->input('id') === null or $request->input('id') == 1977 or $request->input('id') == 1988) {
             $data['id'] = Str::uuid();
@@ -117,7 +117,7 @@ class SubscriptionController extends Controller
             return response()->json([], 400);
         }
 
-        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at', 'activated_at']))->save();
+        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at', 'activated_at', 'meta']))->save();
         $subscription->save();
 
         return response()->json($subscription, 200);

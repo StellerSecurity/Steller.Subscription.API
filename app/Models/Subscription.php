@@ -14,6 +14,15 @@ class Subscription extends Model
 
     protected $table = "subscriptions";
 
-    protected $fillable = ['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id', 'activated_at'];
+    protected $fillable = ['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id', 'activated_at', 'meta'];
+
+    protected $casts = [
+        'expires_at'   => 'datetime',
+        'activated_at' => 'datetime',
+        'deleted_at'   => 'datetime',
+        'created_at'   => 'datetime',
+        'updated_at'   => 'datetime',
+        'meta'         => 'array',
+    ];
 
 }
