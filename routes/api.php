@@ -44,4 +44,4 @@ Route::prefix('v1')->group(function () {
         });
     });
 
-});
+})->middleware(\Mondago\ApplicationInsights\Middleware\TrackRequest::class);

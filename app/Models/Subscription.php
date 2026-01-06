@@ -4,14 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subscription extends Model
 {
 
     use HasUuids;
+    use SoftDeletes;
 
     protected $table = "subscriptions";
 
-    protected $fillable = ['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id'];
+    protected $fillable = ['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id', 'activated_at'];
 
 }

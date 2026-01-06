@@ -56,7 +56,8 @@ class SubscriptionController extends Controller
             $where['type'] = $request->input('type');
         }
 
-        $subscriptions = Subscription::where($where)->orderBy('created_at', 'desc')->get();
+        // OLDEST first, never change sorting.
+        $subscriptions = Subscription::where($where)->orderBy('created_at', 'asc')->get();
         return response()->json($subscriptions);
     }
 
@@ -116,7 +117,7 @@ class SubscriptionController extends Controller
             return response()->json([], 400);
         }
 
-        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at', 'user_id']))->save();
+        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'expires_at', 'activated_at']))->save();
         $subscription->save();
 
         return response()->json($subscription, 200);
