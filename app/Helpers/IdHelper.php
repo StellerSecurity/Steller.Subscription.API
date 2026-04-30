@@ -4,22 +4,24 @@ namespace App\Helpers;
 
 class IdHelper
 {
-
     /**
-     * Generates a random string of length 16 - with only numbers.
-     * Typically we use this for Stellar VPN, Antivirus etc, if users dont want,
-     * to use their email.
+     * Generates a random numeric string of length 16.
+     *
+     * Typically used for Stellar VPN, Antivirus, etc. when users do not want
+     * to use their email address.
+     *
+     * The ID will never start with a leading zero.
+     *
      * @return string
      */
-    public static function makePrettyId(): string {
-        $characters = '0123456789';
-        $charactersLength = strlen($characters);
-        $randomString = '';
-        for ($i = 0; $i < 16; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 1)];
+    public static function makePrettyId(): string
+    {
+        $randomString = (string) rand(1, 9);
+
+        for ($i = 1; $i < 16; $i++) {
+            $randomString .= (string) rand(0, 9);
         }
 
         return $randomString;
     }
-
 }
