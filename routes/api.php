@@ -30,6 +30,16 @@ Route::prefix('v1')->group(function () {
             });
         });
 
+
+        Route::prefix('subscriptioneventcontroller')->group(function () {
+            Route::controller(\App\Http\Controllers\v1\SubscriptionEventController::class)->group(function () {
+                Route::post('/add', 'add');
+                Route::get('/find/{id}', 'find');
+                Route::get('/subscription/{subscription_id}', 'subscription');
+                Route::get('/user/{user_id}', 'user');
+            });
+        });
+
         Route::prefix('plancontroller')->group(function () {
             Route::controller(\App\Http\Controllers\v1\PlanController::class)->group(function () {
                 Route::get('/{plan_id}', 'plan');

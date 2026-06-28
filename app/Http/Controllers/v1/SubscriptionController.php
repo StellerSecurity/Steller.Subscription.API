@@ -5,6 +5,7 @@ namespace App\Http\Controllers\v1;
 use App\Helpers\IdHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\SubscriptionSource;
 use App\SubscriptionStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -20,7 +21,22 @@ class SubscriptionController extends Controller
     public function add(Request $request): \Illuminate\Http\JsonResponse
     {
 
-        $data = $request->only(['user_id', 'type', 'expires_at', 'status', 'reseller_user_id', 'id', 'plan_id', 'meta']);
+        $data = $request->only([
+            'user_id',
+            'type',
+            'expires_at',
+            'status',
+            'source',
+            'source_meta',
+            'reseller_user_id',
+            'id',
+            'plan_id',
+            'meta',
+        ]);
+
+        if (array_key_exists('source', $data)) {
+            $data['source'] = SubscriptionSource::normalize($data['source']);
+        }
 
         if($request->input('id') === null or $request->input('id') == 1977 or $request->input('id') == 1988) {
             $data['id'] = Str::uuid();
@@ -54,6 +70,10 @@ class SubscriptionController extends Controller
 
         if($request->input('type') !== null) {
             $where['type'] = $request->input('type');
+        }
+
+        if($request->input('source') !== null) {
+            $where['source'] = SubscriptionSource::normalize($request->input('source'));
         }
 
         // OLDEST first, never change sorting.
@@ -117,7 +137,24 @@ class SubscriptionController extends Controller
             return response()->json([], 400);
         }
 
-        $subscription->fill($request->only(['status', 'reseller_user_id', 'id', 'plan_id', 'user_id', 'expires_at', 'activated_at', 'meta']))->save();
+        $data = $request->only([
+            'status',
+            'source',
+            'source_meta',
+            'reseller_user_id',
+            'id',
+            'plan_id',
+            'user_id',
+            'expires_at',
+            'activated_at',
+            'meta',
+        ]);
+
+        if (array_key_exists('source', $data)) {
+            $data['source'] = SubscriptionSource::normalize($data['source']);
+        }
+
+        $subscription->fill($data)->save();
         $subscription->save();
 
         return response()->json($subscription, 200);
