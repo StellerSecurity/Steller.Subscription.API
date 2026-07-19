@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/user/subscriptions', 'findusersubscriptions');
                 Route::get('/reseller/{reseller_user_id}', 'reseller');
                 Route::patch('/patch', 'patch');
+                Route::post('/activate/{id}', 'activate');
             });
         });
 
