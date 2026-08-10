@@ -56,6 +56,7 @@ class SubscriptionController extends Controller
         // existing immediate expires_at behaviour without modification.
         if ($this->metaBoolean($meta, 'activate_on_login')) {
             $days = $this->validatedActivationDays($meta);
+
             $meta['activate_on_login'] = true;
             $meta['activation_days'] = $days;
             $meta['activated'] = false;
@@ -99,7 +100,9 @@ class SubscriptionController extends Controller
         }
 
         // OLDEST first, never change sorting.
-        $subscriptions = Subscription::where($where)->orderBy('created_at', 'asc')->get();
+        $subscriptions = Subscription::where($where)
+            ->orderBy('created_at', 'asc')
+            ->get();
 
         return response()->json($subscriptions);
     }
@@ -107,21 +110,32 @@ class SubscriptionController extends Controller
     /**
      * Find a subscription.
      *
-     * By default this keeps the original read-only behaviour. A caller that is
-     * handling a successful product login can pass ?activate_on_login=1. The
-     * subscription will then be activated atomically when its metadata opts in.
+     * The response contract is unchanged.
+     *
+     * A subscription is automatically activated only when it contains valid,
+     * canonical deferred-activation metadata and has not already been activated.
      */
     public function find(Request $request, string $id): JsonResponse
     {
-        if ($request->boolean('activate_on_login')) {
-            $result = $this->activateDeferredSubscription($id);
-            $subscription = $result['subscription'];
-        } else {
-            $subscription = Subscription::find($id);
-        }
+        $subscription = Subscription::find($id);
 
         if ($subscription === null) {
             return response()->json(null, 200);
+        }
+
+        $meta = is_array($subscription->meta)
+            ? $subscription->meta
+            : [];
+
+        if (
+            $this->hasValidDeferredActivationMeta($meta)
+            && $meta['activated'] === false
+        ) {
+            $result = $this->activateDeferredSubscription($id);
+
+            if ($result['subscription'] !== null) {
+                $subscription = $result['subscription'];
+            }
         }
 
         return response()->json($subscription, 200);
@@ -183,17 +197,16 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Activate one explicitly deferred subscription on first successful login.
-     *
-     * This endpoint and find(...?activate_on_login=1) both use the same atomic
-     * activation method, so the business rule exists in one place only.
+     * Activate one explicitly deferred subscription.
      */
     public function activate(string $id): JsonResponse
     {
         $result = $this->activateDeferredSubscription($id);
 
         if ($result['subscription'] === null) {
-            return response()->json(['message' => 'Subscription not found.'], 404);
+            return response()->json([
+                'message' => 'Subscription not found.',
+            ], 404);
         }
 
         if (!$result['uses_deferred_activation']) {
@@ -212,9 +225,8 @@ class SubscriptionController extends Controller
     /**
      * Atomically activate a deferred subscription when required.
      *
-     * Legacy and immediate subscriptions are returned unchanged. Deferred
-     * subscriptions are extended once, using the future expires_at as the base
-     * or the current time when expires_at is in the past.
+     * Invalid, malformed, legacy, or immediate subscription metadata is never
+     * modified by this method.
      *
      * @return array{
      *     subscription: Subscription|null,
@@ -226,7 +238,9 @@ class SubscriptionController extends Controller
     {
         return DB::transaction(function () use ($id): array {
             /** @var Subscription|null $subscription */
-            $subscription = Subscription::query()->lockForUpdate()->find($id);
+            $subscription = Subscription::query()
+                ->lockForUpdate()
+                ->find($id);
 
             if ($subscription === null) {
                 return [
@@ -236,10 +250,13 @@ class SubscriptionController extends Controller
                 ];
             }
 
-            $meta = is_array($subscription->meta) ? $subscription->meta : [];
-            $usesDeferredActivation = $this->metaBoolean($meta, 'activate_on_login');
+            $meta = is_array($subscription->meta)
+                ? $subscription->meta
+                : [];
 
-            if (!$usesDeferredActivation) {
+            // Never activate or modify subscriptions with malformed or
+            // non-canonical deferred-activation metadata.
+            if (!$this->hasValidDeferredActivationMeta($meta)) {
                 return [
                     'subscription' => $subscription,
                     'uses_deferred_activation' => false,
@@ -247,7 +264,7 @@ class SubscriptionController extends Controller
                 ];
             }
 
-            if ($this->metaBoolean($meta, 'activated')) {
+            if ($meta['activated'] === true) {
                 return [
                     'subscription' => $subscription,
                     'uses_deferred_activation' => true,
@@ -255,7 +272,7 @@ class SubscriptionController extends Controller
                 ];
             }
 
-            $days = $this->validatedActivationDays($meta);
+            $days = $meta['activation_days'];
             $activatedAt = Carbon::now();
 
             $baseDate = $subscription->expires_at !== null
@@ -290,28 +307,75 @@ class SubscriptionController extends Controller
         // follows the original expires_at scheduler logic.
         $eligible = static function ($query): void {
             $query->whereNull('meta')
-                ->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.activate_on_login')), 'false') <> 'true'")
-                ->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.activated')), 'false') = 'true'");
+                ->orWhereRaw(
+                    "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.activate_on_login')), 'false') <> 'true'"
+                )
+                ->orWhereRaw(
+                    "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.activated')), 'false') = 'true'"
+                );
         };
 
         Subscription::query()
             ->where($eligible)
             ->where('expires_at', '<=', Carbon::now())
             ->where('status', '!=', SubscriptionStatus::INACTIVE->value)
-            ->update(['status' => SubscriptionStatus::INACTIVE->value]);
+            ->update([
+                'status' => SubscriptionStatus::INACTIVE->value,
+            ]);
 
         $data = Subscription::query()
             ->where($eligible)
             ->where('expires_at', '>=', Carbon::now())
             ->where('status', '=', SubscriptionStatus::INACTIVE->value)
-            ->update(['status' => SubscriptionStatus::ACTIVE->value]);
+            ->update([
+                'status' => SubscriptionStatus::ACTIVE->value,
+            ]);
 
         return response()->json($data);
     }
 
+    /**
+     * Determine whether metadata is canonical and safe for deferred activation.
+     */
+    private function hasValidDeferredActivationMeta(array $meta): bool
+    {
+        if (!array_key_exists('activate_on_login', $meta)) {
+            return false;
+        }
+
+        if ($meta['activate_on_login'] !== true) {
+            return false;
+        }
+
+        if (!array_key_exists('activated', $meta)) {
+            return false;
+        }
+
+        if (!is_bool($meta['activated'])) {
+            return false;
+        }
+
+        if (!array_key_exists('activation_days', $meta)) {
+            return false;
+        }
+
+        if (!is_int($meta['activation_days'])) {
+            return false;
+        }
+
+        if ($meta['activation_days'] < 1 || $meta['activation_days'] > 3650) {
+            return false;
+        }
+
+        return true;
+    }
+
     private function metaBoolean(array $meta, string $key): bool
     {
-        return filter_var($meta[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
+        return filter_var(
+            $meta[$key] ?? false,
+            FILTER_VALIDATE_BOOLEAN
+        );
     }
 
     private function validatedActivationDays(array $meta): int
@@ -319,7 +383,12 @@ class SubscriptionController extends Controller
         $days = filter_var(
             $meta['activation_days'] ?? null,
             FILTER_VALIDATE_INT,
-            ['options' => ['min_range' => 1, 'max_range' => 3650]]
+            [
+                'options' => [
+                    'min_range' => 1,
+                    'max_range' => 3650,
+                ],
+            ]
         );
 
         if ($days === false) {
