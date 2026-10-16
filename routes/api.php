@@ -19,6 +19,9 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware(['basicAuth'])->group(function () {
 
+        Route::post('subscriptioncontroller/credit', [\App\Http\Controllers\v1\PaymentCreditController::class, 'credit']);
+        Route::get('subscriptioncontroller/credit-status', [\App\Http\Controllers\v1\PaymentCreditController::class, 'status']);
+
         // wipe user controller
         Route::prefix('subscriptioncontroller')->group(function () {
             Route::controller(\App\Http\Controllers\v1\SubscriptionController::class)->group(function () {
