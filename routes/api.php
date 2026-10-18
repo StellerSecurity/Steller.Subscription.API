@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     Route::middleware(['basicAuth'])->group(function () {
+        Route::post('factory-vpn/register', [\App\Http\Controllers\v1\FactoryVpnHandoverController::class, 'register']);
+        Route::post('factory-vpn/activate', [\App\Http\Controllers\v1\FactoryVpnHandoverController::class, 'activate']);
 
         Route::post('subscriptioncontroller/credit', [\App\Http\Controllers\v1\PaymentCreditController::class, 'credit']);
         Route::get('subscriptioncontroller/credit-status', [\App\Http\Controllers\v1\PaymentCreditController::class, 'status']);
