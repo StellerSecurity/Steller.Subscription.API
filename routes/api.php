@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware(['basicAuth'])->group(function () {
         Route::prefix('account-claims')->group(function () {
+            Route::post('legacy-transfer', [\App\Http\Controllers\v1\ProvisionalAccountClaimController::class, 'legacyTransfer']);
             foreach (['ready','status','register','authorize','transfer'] as $action) {
                 Route::post($action, [\App\Http\Controllers\v1\ProvisionalAccountClaimController::class, $action === 'authorize' ? 'authorizeClaim' : $action]);
             }

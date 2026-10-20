@@ -17,7 +17,7 @@ final class ProvisionalAccountClaimController extends Controller
     public function status(Request $request) {
         $data=$request->validate(['provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/']);
         return response()->json(['protected'=>DB::table('provisional_account_claims')
-            ->where('provisional_user_id',$data['provisional_user_id'])->exists()]);
+            ->where('provisional_user_id',$data['provisional_user_id'])->where('token_hash','!=','legacy')->exists()]);
     }
     public function register(Request $request) {
         $data=$request->validate(['provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/',
@@ -31,6 +31,31 @@ final class ProvisionalAccountClaimController extends Controller
         abort_unless($row && hash_equals($row->token_hash,$hash) && $row->consumed_at===null,409);
         return response()->json(['registered'=>true]);
     }
+    public function legacyTransfer(Request $request) {
+        $data=$request->validate([
+            'provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/',
+            'target_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/',
+        ]);
+        $id=$data['provisional_user_id']; $target=$data['target_user_id'];
+        abort_if($id===$target,422);
+        return DB::transaction(function() use($id,$target) {
+            // Both register and legacy transfer contend on this unique primary key.
+            // Never rely on an earlier HTTP status check or a lock on a missing row.
+            DB::table('provisional_account_claims')->insertOrIgnore([
+                'provisional_user_id'=>$id,'token_hash'=>'legacy','expires_at'=>now()->addYear(),
+            ]);
+            $row=DB::table('provisional_account_claims')->where('provisional_user_id',$id)->lockForUpdate()->first();
+            abort_unless($row && $row->token_hash==='legacy',403);
+            abort_if($row->target_user_id!==null && $row->target_user_id!==$target,403);
+            if($row->consumed_at!==null) return response()->json(['completed'=>true]);
+            $subscriptions=Subscription::where('user_id',$id)->whereIn('type',[1,2])->lockForUpdate()->get();
+            abort_if($subscriptions->isEmpty(),409);
+            foreach($subscriptions as $subscription) $subscription->forceFill(['user_id'=>$target])->save();
+            DB::table('provisional_account_claims')->where('provisional_user_id',$id)
+                ->update(['target_user_id'=>$target,'consumed_at'=>now()]);
+            return response()->json(['completed'=>true]);
+        },3);
+    }
     private function input(Request $request): array {
         return $request->validate(['provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/',
             'token'=>'required|string|regex:/\A[a-f0-9]{64}\z/', 'username'=>'required|email|max:254']);
@@ -39,15 +64,14 @@ final class ProvisionalAccountClaimController extends Controller
         $row=DB::table('provisional_account_claims')->where('provisional_user_id',$data['provisional_user_id'])->lockForUpdate()->first();
         abort_unless($row && hash_equals($row->token_hash,hash('sha256',$data['token']))
             && now()->lessThan($row->expires_at),403);
-        abort_if($row->target_username!==null && $row->target_username!==$data['username'],403);
+        abort_if(($row->consumed_at!==null || $row->target_user_id!==null)
+            && $row->target_username!==$data['username'],403);
         return $row;
     }
     public function authorizeClaim(Request $request) {
         $data=$this->input($request);
         return DB::transaction(function() use($data) {
             $this->claim($data);
-            DB::table('provisional_account_claims')->where('provisional_user_id',$data['provisional_user_id'])
-                ->update(['target_username'=>$data['username']]);
             return response()->json(['authorized'=>true]);
         },3);
     }
@@ -57,7 +81,6 @@ final class ProvisionalAccountClaimController extends Controller
         abort_if($target===$data['provisional_user_id'],422);
         return DB::transaction(function() use($data,$target) {
             $row=$this->claim($data);
-            abort_unless($row->target_username===$data['username'],403);
             abort_if($row->target_user_id!==null && $row->target_user_id!==$target,403);
             if($row->consumed_at!==null) return response()->json(['completed'=>true]);
             // Owner changes and proof consumption commit together. No partial VPN/AV transfer.
@@ -65,7 +88,7 @@ final class ProvisionalAccountClaimController extends Controller
             abort_if($subscriptions->isEmpty(),409);
             foreach($subscriptions as $subscription) $subscription->forceFill(['user_id'=>$target])->save();
             DB::table('provisional_account_claims')->where('provisional_user_id',$data['provisional_user_id'])
-                ->update(['target_user_id'=>$target,'consumed_at'=>now()]);
+                ->update(['target_username'=>$data['username'],'target_user_id'=>$target,'consumed_at'=>now()]);
             return response()->json(['completed'=>true]);
         },3);
     }
