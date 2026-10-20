@@ -39,15 +39,14 @@ final class ProvisionalAccountClaimController extends Controller
         $row=DB::table('provisional_account_claims')->where('provisional_user_id',$data['provisional_user_id'])->lockForUpdate()->first();
         abort_unless($row && hash_equals($row->token_hash,hash('sha256',$data['token']))
             && now()->lessThan($row->expires_at),403);
-        abort_if($row->target_username!==null && $row->target_username!==$data['username'],403);
+        abort_if(($row->consumed_at!==null || $row->target_user_id!==null)
+            && $row->target_username!==$data['username'],403);
         return $row;
     }
     public function authorizeClaim(Request $request) {
         $data=$this->input($request);
         return DB::transaction(function() use($data) {
             $this->claim($data);
-            DB::table('provisional_account_claims')->where('provisional_user_id',$data['provisional_user_id'])
-                ->update(['target_username'=>$data['username']]);
             return response()->json(['authorized'=>true]);
         },3);
     }
@@ -57,7 +56,6 @@ final class ProvisionalAccountClaimController extends Controller
         abort_if($target===$data['provisional_user_id'],422);
         return DB::transaction(function() use($data,$target) {
             $row=$this->claim($data);
-            abort_unless($row->target_username===$data['username'],403);
             abort_if($row->target_user_id!==null && $row->target_user_id!==$target,403);
             if($row->consumed_at!==null) return response()->json(['completed'=>true]);
             // Owner changes and proof consumption commit together. No partial VPN/AV transfer.
@@ -65,7 +63,7 @@ final class ProvisionalAccountClaimController extends Controller
             abort_if($subscriptions->isEmpty(),409);
             foreach($subscriptions as $subscription) $subscription->forceFill(['user_id'=>$target])->save();
             DB::table('provisional_account_claims')->where('provisional_user_id',$data['provisional_user_id'])
-                ->update(['target_user_id'=>$target,'consumed_at'=>now()]);
+                ->update(['target_username'=>$data['username'],'target_user_id'=>$target,'consumed_at'=>now()]);
             return response()->json(['completed'=>true]);
         },3);
     }
