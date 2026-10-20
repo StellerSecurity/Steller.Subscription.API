@@ -50,4 +50,10 @@ final class AccountClaimTest extends \Tests\TestCase
             $this->assertContains('basicAuth',$route->gatherMiddleware());
         }
     }
+    public function test_numeric_aliases_cannot_bypass_protected_status(): void {
+        $this->callClaim('register')->assertOk();
+        foreach(['0123','1.23e2','123 ','+123'] as $alias) {
+            $this->callClaim('status',['provisional_user_id'=>$alias])->assertStatus(422);
+        }
+    }
 }

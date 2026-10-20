@@ -15,12 +15,12 @@ final class ProvisionalAccountClaimController extends Controller
         return response()->json(['ready'=>true]);
     }
     public function status(Request $request) {
-        $data=$request->validate(['provisional_user_id'=>'required|string|max:128']);
+        $data=$request->validate(['provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/']);
         return response()->json(['protected'=>DB::table('provisional_account_claims')
             ->where('provisional_user_id',$data['provisional_user_id'])->exists()]);
     }
     public function register(Request $request) {
-        $data=$request->validate(['provisional_user_id'=>'required|string|max:128',
+        $data=$request->validate(['provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/',
             'token'=>'required|string|regex:/\A[a-f0-9]{64}\z/']);
         $hash=hash('sha256',$data['token']);
         // insertOrIgnore is idempotent for transport retries, but never replaces proof.
@@ -32,7 +32,7 @@ final class ProvisionalAccountClaimController extends Controller
         return response()->json(['registered'=>true]);
     }
     private function input(Request $request): array {
-        return $request->validate(['provisional_user_id'=>'required|string|max:128',
+        return $request->validate(['provisional_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/',
             'token'=>'required|string|regex:/\A[a-f0-9]{64}\z/', 'username'=>'required|email|max:254']);
     }
     private function claim(array $data) {
@@ -53,7 +53,7 @@ final class ProvisionalAccountClaimController extends Controller
     }
     public function transfer(Request $request) {
         $data=$this->input($request);
-        $target=$request->validate(['target_user_id'=>'required|string|max:128'])['target_user_id'];
+        $target=$request->validate(['target_user_id'=>'required|string|max:20|regex:/\A[1-9][0-9]*\z/'])['target_user_id'];
         abort_if($target===$data['provisional_user_id'],422);
         return DB::transaction(function() use($data,$target) {
             $row=$this->claim($data);
