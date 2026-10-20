@@ -28,7 +28,8 @@ final class AccountClaimTest extends \Tests\TestCase
         $this->callClaim('register')->assertOk();
         $this->callClaim('authorize',['token'=>str_repeat('b',64)])->assertForbidden();
         $this->callClaim('authorize')->assertOk();
-        $this->callClaim('authorize',['username'=>'other@example.com'])->assertForbidden();
+        $this->callClaim('authorize',['username'=>'other@example.com'])->assertOk();
+        $this->assertNull(DB::table('provisional_account_claims')->first()->target_username);
         $this->callClaim('register',['token'=>str_repeat('b',64)])->assertStatus(409);
     }
     public function test_failed_save_rolls_back_both_ownership_and_consumption(): void {
@@ -40,12 +41,12 @@ final class AccountClaimTest extends \Tests\TestCase
         $this->assertNull(DB::table('provisional_account_claims')->first()->consumed_at);
     }
     public function test_expired_claim_and_unbound_transfer_are_rejected(): void {
-        $this->callClaim('register');$this->callClaim('transfer')->assertForbidden();
+        $this->callClaim('register');
         $this->travel(367)->days();$this->callClaim('authorize')->assertForbidden();
     }
     public function test_old_activation_remains_unprotected(): void { $this->callClaim('status')->assertJson(['protected'=>false]); }
     public function test_internal_routes_require_authentication_middleware(): void {
-        foreach(['ready','status','register','authorize','transfer'] as $action) {
+        foreach(['ready','status','register','authorize','transfer','legacy-transfer'] as $action) {
             $route=app('router')->getRoutes()->match(\Illuminate\Http\Request::create('/api/v1/account-claims/'.$action,'POST'));
             $this->assertContains('basicAuth',$route->gatherMiddleware());
         }
@@ -55,5 +56,35 @@ final class AccountClaimTest extends \Tests\TestCase
         foreach(['0123','1.23e2','123 ','+123'] as $alias) {
             $this->callClaim('status',['provisional_user_id'=>$alias])->assertStatus(422);
         }
+    }
+    public function test_legacy_stale_status_is_rechecked_before_transfer(): void {
+        $this->callClaim('status')->assertJson(['protected'=>false]);
+        $this->callClaim('register')->assertOk();
+        [$vpn,$av]=$this->grants();
+        $this->callClaim('legacy-transfer')->assertForbidden();
+        $this->assertEquals(123,$vpn->fresh()->user_id);
+        $this->assertEquals(123,$av->fresh()->user_id);
+    }
+    public function test_legacy_before_registration_without_grants_leaves_no_state(): void {
+        $this->callClaim('legacy-transfer')->assertStatus(409);
+        $this->assertDatabaseCount('provisional_account_claims',0);
+        $this->callClaim('register')->assertOk();
+        $this->grants();$this->callClaim('legacy-transfer')->assertForbidden();
+    }
+    public function test_completed_legacy_transfer_cannot_be_registered_as_new_v2(): void {
+        [$vpn,$av]=$this->grants();
+        $this->callClaim('legacy-transfer')->assertOk();
+        $this->callClaim('legacy-transfer')->assertOk();
+        $this->callClaim('register')->assertStatus(409);
+        $this->callClaim('legacy-transfer',['target_user_id'=>'789'])->assertForbidden();
+        $this->assertEquals(456,$vpn->fresh()->user_id);
+    }
+    public function test_authorization_does_not_bind_failed_destination(): void {
+        $this->grants();$this->callClaim('register')->assertOk();
+        $this->callClaim('authorize',['username'=>'wrong@example.com'])->assertOk();
+        // Recover an unconsumed binding left by the previous server version.
+        DB::table('provisional_account_claims')->update(['target_username'=>'wrong@example.com']);
+        $this->callClaim('authorize')->assertOk();$this->callClaim('transfer')->assertOk();
+        $this->callClaim('transfer',['username'=>'wrong@example.com'])->assertForbidden();
     }
 }
