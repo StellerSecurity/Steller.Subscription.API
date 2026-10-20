@@ -46,6 +46,10 @@ stages:
       workingDirectory: $(rootFolder)
       displayName: 'Composer install'
 
+    - script: vendor/bin/phpunit --filter 'AccountClaim|FactoryVpnHandover'
+      workingDirectory: $(rootFolder)
+      displayName: 'Verify account claims and existing factory handover'
+
     - task: ArchiveFiles@2
       displayName: 'Archive files'
       inputs:
@@ -78,3 +82,5 @@ stages:
               azureSubscription: $(azureSubscription)
               appName: $(webAppName)
               package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+              appType: webAppLinux
+              startUpCommand: 'sh /home/site/wwwroot/deploy/startup.sh'

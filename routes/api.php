@@ -18,6 +18,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     Route::middleware(['basicAuth'])->group(function () {
+        Route::prefix('account-claims')->group(function () {
+            foreach (['ready','status','register','authorize','transfer'] as $action) {
+                Route::post($action, [\App\Http\Controllers\v1\ProvisionalAccountClaimController::class, $action === 'authorize' ? 'authorizeClaim' : $action]);
+            }
+        });
+
         Route::post('factory-vpn/register', [\App\Http\Controllers\v1\FactoryVpnHandoverController::class, 'register']);
         Route::post('factory-vpn/activate', [\App\Http\Controllers\v1\FactoryVpnHandoverController::class, 'activate']);
 
