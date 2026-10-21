@@ -44,6 +44,22 @@ stages:
       workingDirectory: $(rootFolder)
       displayName: 'Verify concurrent claims and rollback on isolated MySQL'
 
+    - script: python3 -m unittest discover -s deploy -p 'test_production_dependencies.py'
+      workingDirectory: $(rootFolder)
+      displayName: 'Test production dependency verification'
+
+    # Tests above use development tools; never ship those tools in the API package.
+    - script: |
+        set -eu
+        composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+        git diff --exit-code -- composer.lock
+        python3 deploy/verify_production_dependencies.py
+        composer audit --locked --no-dev --no-interaction
+      workingDirectory: $(rootFolder)
+      displayName: 'Install and verify production dependencies only'
+      env:
+        APPINSIGHTS_ENABLED: 'false'
+
     - task: ArchiveFiles@2
       displayName: 'Archive files'
       inputs:
