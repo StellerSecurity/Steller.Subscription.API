@@ -2012,12 +2012,12 @@
             "version": "2.69.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/briannesbitt/Carbon.git",
+                "url": "https://github.com/CarbonPHP/carbon.git",
                 "reference": "4308217830e4ca445583a37d1bf4aff4153fa81c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/briannesbitt/Carbon/zipball/4308217830e4ca445583a37d1bf4aff4153fa81c",
+                "url": "https://api.github.com/repos/CarbonPHP/carbon/zipball/4308217830e4ca445583a37d1bf4aff4153fa81c",
                 "reference": "4308217830e4ca445583a37d1bf4aff4153fa81c",
                 "shasum": ""
             },
