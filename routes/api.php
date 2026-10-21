@@ -67,4 +67,4 @@ Route::prefix('v1')->group(function () {
         });
     });
 
-})->middleware(\Mondago\ApplicationInsights\Middleware\TrackRequest::class);
+})->middleware(\App\Http\Middleware\SafeTrackRequest::class);

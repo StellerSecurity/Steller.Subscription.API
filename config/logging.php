@@ -54,14 +54,14 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single', 'app-insights'],
+            'channels' => ['single'],
             'ignore_exceptions' => false,
         ],
 
         // other channels...
         'app-insights' => [
-            'driver' => 'custom',
-            'via' => Mondago\ApplicationInsights\Logging\CreateApplicationInsightsLogger::class,
+            'driver' => 'single',
+            'path' => storage_path('logs/laravel.log'),
         ],
 
         'single' => [
