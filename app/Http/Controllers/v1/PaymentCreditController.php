@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentCreditController extends Controller
 {
+    /** Read-only VPN entitlement: unlike find(), this never activates deferred access. */
+    public function entitlement(string $id): JsonResponse
+    {
+        $subscription = Subscription::query()->where('type', 1)->findOrFail($id);
+        return response()->json($subscription->only(['id', 'type', 'status', 'expires_at']));
+    }
+
     public function credit(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -19,6 +26,7 @@ class PaymentCreditController extends Controller
             'payment_reference' => 'required|string|max:191',
             'days' => 'required|integer|min:1|max:3650',
             'type' => 'required|integer',
+            'coverage_ends_at' => 'sometimes|date',
         ]);
 
         return DB::transaction(function () use ($data): JsonResponse {
@@ -38,7 +46,14 @@ class PaymentCreditController extends Controller
 
             $base = $subscription->expires_at && $subscription->expires_at->isFuture()
                 ? $subscription->expires_at->copy() : Carbon::now();
-            $expiresAt = $base->addDays((int) $data['days']);
+            if (isset($data['coverage_ends_at'])) {
+                abort_unless((int) $data['type'] === 1, 422, 'Invoice coverage is VPN-only.');
+                $coverageEnd = Carbon::parse($data['coverage_ends_at']);
+                $expiresAt = $subscription->expires_at && $subscription->expires_at->gt($coverageEnd)
+                    ? $subscription->expires_at->copy() : $coverageEnd;
+            } else {
+                $expiresAt = $base->addDays((int) $data['days']);
+            }
 
             // The unique reference and subscription update commit together. A retried
             // HTTP request after a lost response cannot add the same days again.
@@ -50,7 +65,7 @@ class PaymentCreditController extends Controller
                 'created_at' => Carbon::now(),
             ]);
             $subscription->forceFill(['expires_at' => $expiresAt,
-                'status' => SubscriptionStatus::ACTIVE->value])->save();
+                'status' => $expiresAt->isFuture() ? SubscriptionStatus::ACTIVE->value : SubscriptionStatus::INACTIVE->value])->save();
 
             return response()->json(['credited' => true, 'already_credited' => false,
                 'expires_at' => $expiresAt]);
@@ -65,6 +80,6 @@ class PaymentCreditController extends Controller
         ]);
         $credit = DB::table('subscription_payment_credits')->where($data)->first();
 
-        return response()->json(['credited' => $credit !== null]);
+        return response()->json(['credited' => $credit !== null, 'supports_coverage_end' => true]);
     }
 }
