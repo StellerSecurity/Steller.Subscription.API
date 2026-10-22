@@ -32,6 +32,19 @@ class PaymentCreditTest extends TestCase
         $this->assertTrue($subscription->fresh()->expires_at->equalTo(now()->addDays(70)));
     }
 
+    public function test_read_only_entitlement_does_not_activate_an_inactive_subscription(): void
+    {
+        $this->withoutMiddleware();
+        $subscription = Subscription::create(['user_id' => 1, 'type' => 1,
+            'expires_at' => now()->subDays(30), 'status' => 0, 'meta' => ['activated' => false]]);
+        $before = $subscription->fresh()->toArray();
+        $this->getJson('/api/v1/subscriptioncontroller/entitlement/'.$subscription->id)
+            ->assertOk()->assertJsonPath('id', $subscription->id)->assertJsonPath('status', 0)
+            ->assertJsonMissingPath('meta')->assertJsonMissingPath('user_id');
+        $this->assertSame($before, $subscription->fresh()->toArray());
+        $this->assertSame(0, DB::table('subscription_payment_credits')->count());
+    }
+
     public function test_paid_invoice_coverage_is_monotonic_and_not_added_again_on_retry(): void
     {
         $this->withoutMiddleware();
