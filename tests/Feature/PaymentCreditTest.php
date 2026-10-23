@@ -32,6 +32,15 @@ class PaymentCreditTest extends TestCase
         $this->assertTrue($subscription->fresh()->expires_at->equalTo(now()->addDays(70)));
     }
 
+    public function test_read_only_entitlement_accepts_existing_numeric_vpn_ids(): void
+    {
+        $this->withoutMiddleware();
+        $subscription = Subscription::create(['user_id' => 1, 'id' => '1234567890123456', 'type' => 1, 'status' => 0, 'expires_at' => now()->addDays(2)]);
+        $this->getJson('/api/v1/subscriptioncontroller/entitlement/'.$subscription->id)
+            ->assertOk()->assertJsonPath('id', '1234567890123456');
+        $this->assertSame(0, (int) $subscription->fresh()->status);
+    }
+
     public function test_read_only_entitlement_does_not_activate_an_inactive_subscription(): void
     {
         $this->withoutMiddleware();

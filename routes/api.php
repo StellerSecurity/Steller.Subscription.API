@@ -28,7 +28,7 @@ Route::prefix('v1')->group(function () {
         Route::post('factory-vpn/register', [\App\Http\Controllers\v1\FactoryVpnHandoverController::class, 'register']);
         Route::post('factory-vpn/activate', [\App\Http\Controllers\v1\FactoryVpnHandoverController::class, 'activate']);
 
-        Route::get('subscriptioncontroller/entitlement/{id}', [\App\Http\Controllers\v1\PaymentCreditController::class, 'entitlement'])->whereUuid('id');
+        Route::get('subscriptioncontroller/entitlement/{id}', [\App\Http\Controllers\v1\PaymentCreditController::class, 'entitlement'])->where('id', '(?:[0-9]{16}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})');
         Route::post('subscriptioncontroller/credit', [\App\Http\Controllers\v1\PaymentCreditController::class, 'credit']);
         Route::get('subscriptioncontroller/credit-status', [\App\Http\Controllers\v1\PaymentCreditController::class, 'status']);
 
