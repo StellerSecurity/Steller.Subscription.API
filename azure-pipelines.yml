@@ -14,7 +14,7 @@ variables:
   webAppName: 'stellersubscriptionapiprod'
 
   # Agent VM image name
-  vmImageName: 'ubuntu-latest'
+  vmImageName: 'ubuntu-24.04'
 
   # Environment name
   environmentName: 'stellersubscriptionapiprod'
@@ -26,7 +26,7 @@ stages:
 - stage: Build
   displayName: Build stage
   variables:
-    phpVersion: '8.2'
+    phpVersion: '8.3'
   jobs:
   - job: BuildJob
     pool:
@@ -35,15 +35,18 @@ stages:
     - script: |
         set -euo pipefail
         php_binary="/usr/bin/php$(phpVersion)"
-        test -x "$php_binary"
-        "$php_binary" -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 2 ? 0 : 1);'
+        if [ ! -x "$php_binary" ]; then
+          echo "Required preinstalled runtime is missing: $php_binary" >&2
+          exit 1
+        fi
+        "$php_binary" -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
         runtime_dir="$(Agent.TempDirectory)/stellar-php-$(phpVersion)"
         mkdir -p "$runtime_dir"
         ln -sfn "$php_binary" "$runtime_dir/php"
         export PATH="$runtime_dir:$PATH"
         echo "##vso[task.prependpath]$runtime_dir"
         php -version
-        php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 2 ? 0 : 1);'
+        php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
       workingDirectory: $(rootFolder)
       displayName: 'Pin PHP $(phpVersion) for Composer and subsequent steps'
 
