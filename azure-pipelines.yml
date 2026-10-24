@@ -32,9 +32,20 @@ stages:
     pool:
       vmImage: $(vmImageName)
     steps:
-    - script: php -version
+    - script: |
+        set -euo pipefail
+        php_binary="/usr/bin/php$(phpVersion)"
+        test -x "$php_binary"
+        "$php_binary" -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 2 ? 0 : 1);'
+        runtime_dir="$(Agent.TempDirectory)/stellar-php-$(phpVersion)"
+        mkdir -p "$runtime_dir"
+        ln -sfn "$php_binary" "$runtime_dir/php"
+        export PATH="$runtime_dir:$PATH"
+        echo "##vso[task.prependpath]$runtime_dir"
+        php -version
+        php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 2 ? 0 : 1);'
       workingDirectory: $(rootFolder)
-      displayName: 'Report Composer host runtime; tests use pinned PHP 8.2 container'
+      displayName: 'Pin PHP $(phpVersion) for Composer and subsequent steps'
 
     - script: composer install --no-interaction --prefer-dist
       workingDirectory: $(rootFolder)
