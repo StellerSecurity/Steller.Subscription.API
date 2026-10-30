@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     Route::middleware(['basicAuth'])->group(function () {
+        Route::post('subscriptioncontroller/anonymous-login-owner', \App\Http\Controllers\v1\AnonymousLoginOwnerController::class)
+            ->middleware(\Illuminate\Routing\Middleware\ThrottleRequests::class.':30,1');
         Route::prefix('account-claims')->group(function () {
             Route::post('legacy-transfer', [\App\Http\Controllers\v1\ProvisionalAccountClaimController::class, 'legacyTransfer']);
             foreach (['ready','status','register','authorize','transfer'] as $action) {
